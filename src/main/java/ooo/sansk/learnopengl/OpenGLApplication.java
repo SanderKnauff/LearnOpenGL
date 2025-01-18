@@ -30,6 +30,12 @@ import static org.lwjgl.glfw.GLFW.glfwSwapInterval;
 import static org.lwjgl.glfw.GLFW.glfwTerminate;
 import static org.lwjgl.glfw.GLFW.glfwWindowHint;
 import static org.lwjgl.glfw.GLFW.glfwWindowShouldClose;
+import static org.lwjgl.opengl.GL11.GL_FRONT_AND_BACK;
+import static org.lwjgl.opengl.GL11.GL_LINE;
+import static org.lwjgl.opengl.GL11.GL_UNSIGNED_INT;
+import static org.lwjgl.opengl.GL11.glDrawElements;
+import static org.lwjgl.opengl.GL11.glPolygonMode;
+import static org.lwjgl.opengl.GL15.GL_ELEMENT_ARRAY_BUFFER;
 import static org.lwjgl.opengl.GL33.GL_ARRAY_BUFFER;
 import static org.lwjgl.opengl.GL33.GL_COLOR_BUFFER_BIT;
 import static org.lwjgl.opengl.GL33.GL_COMPILE_STATUS;
@@ -72,7 +78,7 @@ public class OpenGLApplication {
     public void run() {
         System.out.println("Hello LWJGL " + Version.getVersion() + "!");
 
-        try(final var errorCallback = GLFWErrorCallback.createPrint(System.err)) {
+        try (final var errorCallback = GLFWErrorCallback.createPrint(System.err)) {
             errorCallback.set();
 
             if (!glfwInit()) {
@@ -112,18 +118,27 @@ public class OpenGLApplication {
             final var shaderProgram = createShaderProgram(new int[]{vertexShader}, new int[]{fragmentShader});
 
             float[] vertices = {
+                0.5f, 0.5f, 0.0f,
+                -0.5f, 0.5f, 0.0f,
                 -0.5f, -0.5f, 0.0f,
-                0.5f, -0.5f, 0.0f,
-                0.0f, 0.5f, 0.0f
+                0.5f, -0.5f, 0.0f
+            };
+            int[] indices = {
+                0, 1, 3,
+                1, 2, 3
             };
 
             final var vertexArrayObject = glGenVertexArrays();
             final var vertexBufferObject = glGenBuffers();
+            final var elementBufferObject = glGenBuffers();
 
             glBindVertexArray(vertexArrayObject);
 
             glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObject);
             glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW);
+
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBufferObject);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices, GL_STATIC_DRAW);
 
             glVertexAttribPointer(0, 3, GL_FLOAT, false, 3 * Float.BYTES, 0);
             glEnableVertexAttribArray(0);
@@ -139,7 +154,8 @@ public class OpenGLApplication {
 
                 glUseProgram(shaderProgram);
                 glBindVertexArray(vertexArrayObject);
-                glDrawArrays(GL_TRIANGLES, 0, 3);
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBufferObject);
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
                 glfwSwapBuffers(window); // swap the color buffers
                 glfwPollEvents();
@@ -159,21 +175,21 @@ public class OpenGLApplication {
     }
 
     private void processInput(long window) {
-        if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
             glfwSetWindowShouldClose(window, true);
     }
 
     private int createVertexShader() {
         //language=GLSL
         final var vertexShaderSource = """
-                #version 330 core
-                layout (location = 0) in vec3 aPos;
-                
-                void main()
-                {
-                    gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0f);
-                }
-                """;
+            #version 330 core
+            layout (location = 0) in vec3 aPos;
+            
+            void main()
+            {
+                gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0f);
+            }
+            """;
 
         final var vertexShader = glCreateShader(GL_VERTEX_SHADER);
         glShaderSource(vertexShader, vertexShaderSource);
@@ -191,14 +207,14 @@ public class OpenGLApplication {
     private int createFragmentShader() {
         //language=GLSL
         final var fragementShaderSource = """
-                #version 330 core
-                out vec4 FragColor;
-                
-                void main()
-                {
-                    FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
-                }
-                """;
+            #version 330 core
+            out vec4 FragColor;
+            
+            void main()
+            {
+                FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
+            }
+            """;
 
         final var fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
         glShaderSource(fragmentShader, fragementShaderSource);
